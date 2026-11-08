@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pips">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#E4ECEF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1B22" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Catan Pip Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: title + two tabs (Quick pips | Corner builder). Quick = one centred column. Builder: phone one column; iPad/desktop builder left, saved + pair right */
+:root{
+  --sea:#E4ECEF;        /* page ground: pale sea */
+  --panel:#FFFFFF;
+  --ink:#16232B;
+  --muted:#5B6B73;
+  --line:#CBD8DD;
+  --token:#F3E6C8;      /* number-token face */
+  --token-ink:#1E1A12;
+  --hot:#C0291B;        /* 6 and 8 */
+  --accent:#1F6E8C;     /* active / selection */
+  --accent-soft:#D5E7EE;
+  --good:#2E7D4F; --ok:#B7791F; --weak:#A33A2E;
+  --lumber:#2F6B3A; --brick:#B4532A; --sheep:#7FB352; --wheat:#D9A82B; --ore:#7A7F8A; --none:#9DB4BE;
+  --display:"Bitter", Georgia, serif;
+  --body:"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --sea:#0E1B22; --panel:#16262F; --ink:#E6EEF1; --muted:#93A6AE; --line:#2A3F49;
+  --token:#E9DAB8; --token-ink:#1E1A12; --hot:#E0503F; --accent:#5DB3D3; --accent-soft:#1D3B48;
+  --good:#5CC48A; --ok:#E3A93D; --weak:#E26B5C; --none:#4E6670; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --sea:#0E1B22; --panel:#16262F; --ink:#E6EEF1; --muted:#93A6AE; --line:#2A3F49;
+  --token:#E9DAB8; --token-ink:#1E1A12; --hot:#E0503F; --accent:#5DB3D3; --accent-soft:#1D3B48;
+  --good:#5CC48A; --ok:#E3A93D; --weak:#E26B5C; --none:#4E6670; color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--sea);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:18px 32px}
+.page{max-width:1040px;margin:0 auto;display:grid;gap:16px}
+.wrap{display:grid;gap:16px}
+@media (min-width:820px){.wrap{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);align-items:start}}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px;max-width:520px;width:100%}
+.tab{appearance:none;border:none;background:transparent;color:var(--muted);font:inherit;font-weight:700;font-size:.95rem;padding:10px 8px;border-radius:9px;cursor:pointer;min-height:44px}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--panel)}
+
+/* quick view */
+.qwrap{max-width:520px;width:100%;display:grid;gap:18px}
+.qscore{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:14px}
+.qtop{display:flex;align-items:center;gap:16px}
+.qtop .big{font-size:4rem;min-width:2ch;text-align:center}
+.qslots{display:flex;gap:12px;justify-content:center;align-items:center}
+.qslots .tok{width:58px;height:58px;font-size:1.35rem}
+.qslots .tok .dots{bottom:10px}
+.plus{color:var(--muted);font-weight:700}
+.qslot{appearance:none;border:none;background:none;padding:0;border-radius:50%;cursor:pointer;position:relative}
+.qslot:disabled{cursor:default}
+.qslot .rm{position:absolute;top:-4px;right:-4px;width:20px;height:20px;border-radius:50%;background:var(--ink);color:var(--panel);font-size:.8rem;font-weight:700;display:grid;place-items:center;line-height:1}
+.mode{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.seg{display:inline-grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.seg button{appearance:none;border:none;background:transparent;color:var(--muted);font:inherit;font-weight:700;font-size:.88rem;padding:8px 14px;border-radius:8px;cursor:pointer;min-height:40px}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+.qkey{position:relative}
+.qkey .cnt{position:absolute;top:-4px;right:-2px;min-width:22px;height:22px;padding:0 5px;border-radius:999px;background:var(--accent);color:var(--panel);font-size:.78rem;font-weight:700;display:grid;place-items:center;font-variant-numeric:tabular-nums}
+.qkey .left{display:block;text-align:center;font-size:.72rem;color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums}
+.qkeys{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;justify-items:center}
+.qkey{appearance:none;border:none;background:none;padding:0;cursor:pointer;border-radius:50%;touch-action:manipulation}
+.qkey .tok{width:64px;height:64px;font-size:1.5rem}
+.qkey .tok .dots{bottom:11px}
+.qkey .tok .dots i{width:4px;height:4px}
+.qkey[aria-pressed="true"] .tok{outline:4px solid var(--accent);outline-offset:3px}
+.qkey:disabled{cursor:default;opacity:.4}
+.qkey:focus-visible{outline:3px solid var(--accent);outline-offset:6px}
+@media (max-width:440px){.qkeys{gap:8px}.qkey .tok{width:56px;height:56px;font-size:1.3rem}}
+@media (max-width:380px){.qkey .tok{width:50px;height:50px;font-size:1.15rem}.qslots .tok{width:50px;height:50px}}
+@media (min-width:700px){.qkey .tok{width:76px;height:76px;font-size:1.8rem}}
+.hint{color:var(--muted);font-size:.85rem;text-align:center;margin:0;min-height:1.2em}
+.btn.wide{width:100%;min-height:48px}
+h1{font-family:var(--display);font-weight:800;font-size:1.6rem;margin:0;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:.9rem;margin:0}
+h2{font-family:var(--display);font-weight:600;font-size:1.05rem;margin:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:14px;min-width:0}
+.label{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+
+/* number token */
+.tok{width:52px;height:52px;border-radius:50%;background:var(--token);color:var(--token-ink);display:grid;place-items:center;
+  font-family:var(--display);font-weight:800;font-size:1.2rem;line-height:1;position:relative;box-shadow:inset 0 -2px 0 rgba(0,0,0,.12)}
+.tok .n{transform:translateY(-3px)}
+.tok .dots{position:absolute;bottom:9px;left:0;right:0;display:flex;justify-content:center;gap:2px}
+.tok .dots i{width:3.5px;height:3.5px;border-radius:50%;background:currentColor}
+.tok.hot{color:var(--hot)}
+.tok.empty{background:transparent;border:2px dashed var(--line);color:var(--muted);box-shadow:none;font-size:.8rem;font-family:var(--body);font-weight:600}
+
+/* corner slots */
+.slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.slot{appearance:none;border:2px solid var(--line);background:var(--sea);border-radius:12px;padding:10px 6px 8px;
+  display:grid;justify-items:center;gap:6px;cursor:pointer;color:var(--ink);font:inherit}
+.slot[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.slot:focus-visible,.key:focus-visible,.chip:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.res{font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:6px}
+.sw{width:10px;height:10px;border-radius:3px;display:inline-block;flex:none}
+
+/* result */
+.result{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;align-items:center}
+.big{font-family:var(--display);font-weight:800;font-size:3.2rem;line-height:1;font-variant-numeric:tabular-nums}
+.verdict{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-weight:700;font-size:.85rem;width:max-content;color:#fff}
+.v-weak{background:var(--weak)} .v-ok{background:var(--ok)} .v-good{background:var(--good)} .v-great{background:var(--good)}
+.facts{color:var(--muted);font-size:.88rem}
+.bar{display:flex;height:10px;border-radius:999px;overflow:hidden;background:var(--sea);grid-column:1/-1}
+.bar span{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.82rem;grid-column:1/-1;font-variant-numeric:tabular-nums}
+
+/* pickers */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{appearance:none;border:1.5px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:8px 12px;
+  font:inherit;font-size:.88rem;font-weight:600;display:inline-flex;align-items:center;gap:7px;cursor:pointer;min-height:40px}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.keys{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;justify-items:center}
+.key{appearance:none;border:none;background:none;padding:0;cursor:pointer;border-radius:50%}
+.key .tok{width:56px;height:56px;font-size:1.3rem}
+.key[aria-pressed="true"] .tok{outline:3px solid var(--accent);outline-offset:2px}
+@media (max-width:380px){.key .tok{width:48px;height:48px;font-size:1.1rem}}
+
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{appearance:none;border:1.5px solid var(--accent);background:var(--accent);color:var(--panel);font:inherit;font-weight:700;
+  padding:10px 16px;border-radius:10px;cursor:pointer;min-height:44px}
+.btn.ghost{background:transparent;color:var(--accent)}
+
+/* saved */
+.saved{display:grid;gap:8px}
+.cardrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px;align-items:center}
+.card{border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:center;background:var(--panel);cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%}
+.card[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.card .sc{font-family:var(--display);font-weight:800;font-size:1.6rem;font-variant-numeric:tabular-nums;min-width:2ch;text-align:center}
+.card .meta{min-width:0;display:grid;gap:4px}
+.card .name{font-weight:700}
+.minis{display:flex;flex-wrap:wrap;gap:6px;font-size:.8rem;color:var(--muted)}
+.mini{display:inline-flex;align-items:center;gap:4px}
+.mini b{color:var(--ink);font-variant-numeric:tabular-nums}
+.mini b.hot{color:var(--hot)}
+.x{appearance:none;border:none;background:none;color:var(--muted);font-size:1.3rem;cursor:pointer;padding:6px 8px;border-radius:8px}
+.tag{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-left:6px}
+.empty-note{color:var(--muted);font-size:.9rem}
+
+.pair{display:grid;gap:10px}
+.pairnums{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline}
+.pairnums div{display:grid}
+.pairnums strong{font-family:var(--display);font-size:1.8rem;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+.cover{display:flex;flex-wrap:wrap;gap:6px}
+.cov{font-size:.8rem;font-weight:600;padding:4px 9px;border-radius:999px;border:1.5px solid var(--line);display:inline-flex;gap:6px;align-items:center}
+.cov.off{opacity:.45;text-decoration:line-through}
+.warn{font-size:.88rem;color:var(--muted)}
+.warn b{color:var(--ink)}
+
+table{border-collapse:collapse;width:100%;font-size:.88rem;font-variant-numeric:tabular-nums}
+td,th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+td.hot{color:var(--hot);font-weight:700}
+@media (prefers-reduced-motion:no-preference){.bar span{transition:width .2s ease}}
+</style>
+
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Catan Pip Calculator</h1>
+    <p class="sub">10+ pips is a strong corner.</p>
+  </header>
+  <div class="tabs" role="tablist" aria-label="Calculator">
+    <button class="tab" role="tab" type="button" id="tab-quick" aria-controls="view-quick" data-view="quick">Quick pips</button>
+    <button class="tab" role="tab" type="button" id="tab-corners" aria-controls="view-corners" data-view="corners">Corner builder</button>
+  </div>
+
+  <div class="qwrap" id="view-quick" role="tabpanel" aria-labelledby="tab-quick">
+    <div class="mode">
+      <span class="label" id="mode-l">Board</span>
+      <div class="seg" role="group" aria-labelledby="mode-l">
+        <button type="button" id="mode-normal" data-mode="normal">Normal (3–4)</button>
+        <button type="button" id="mode-ext" data-mode="extended">Extended (5–6)</button>
+      </div>
+    </div>
+    <section class="qscore" aria-live="polite">
+      <div class="qtop">
+        <div class="big" id="qtotal">0</div>
+        <div style="display:grid;gap:6px">
+          <span class="verdict" id="qverdict">Pick numbers</span>
+          <span class="facts" id="qfacts">Tap up to three numbers below</span>
+        </div>
+      </div>
+      <div class="qslots" id="qslots"></div>
+    </section>
+    <div class="qkeys" id="qkeys" role="group" aria-label="Number tokens"></div>
+    <p class="hint" id="qhint">Tap a number to add it, tap again to remove it.</p>
+    <button class="btn ghost wide" id="qclear" type="button">Clear</button>
+  </div>
+
+<div class="wrap" id="view-corners" role="tabpanel" aria-labelledby="tab-corners" hidden>
+  <p class="sub" style="grid-column:1/-1">Tap a hex, pick its resource and number. Save corners and tap two to compare as a pair.</p>
+
+  <section class="panel" aria-labelledby="corner-h">
+    <h2 id="corner-h">Corner</h2>
+    <div class="slots" id="slots" role="group" aria-label="The three hexes touching this corner"></div>
+
+    <div class="result" id="result" aria-live="polite"></div>
+
+    <div>
+      <div class="label" id="res-l">Resource for <span id="active-name">hex 1</span></div>
+      <div class="chips" id="resChips" role="group" aria-labelledby="res-l" style="margin-top:8px"></div>
+    </div>
+    <div>
+      <div class="label" id="num-l">Number</div>
+      <div class="keys" id="keys" role="group" aria-labelledby="num-l" style="margin-top:8px"></div>
+    </div>
+
+    <div class="row">
+      <button class="btn" id="saveBtn" type="button">Save corner</button>
+      <button class="btn ghost" id="clearBtn" type="button">Clear</button>
+    </div>
+  </section>
+
+  <div style="display:grid;gap:16px;min-width:0">
+    <section class="panel" aria-labelledby="saved-h">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
+        <h2 id="saved-h">Saved corners</h2>
+        <span class="sub">Tap two to compare as a pair</span>
+      </div>
+      <div class="saved" id="saved"></div>
+      <div class="pair" id="pair"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="ref-h">
+      <h2 id="ref-h">Pip table</h2>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Number</th><th>Pips</th><th>Rolls in 36</th><th>Chance</th></tr></thead>
+          <tbody id="ref"></tbody>
+        </table>
+      </div>
+      <p class="sub">Pips first, then scarcity. Grab the board's scarce resource when its numbers are decent.</p>
+    </section>
+  </div>
+</div>
+</div>
+
+<script>
+(function(){
+  const RES = [
+    {k:'lumber',name:'Lumber'},{k:'brick',name:'Brick'},{k:'sheep',name:'Sheep'},
+    {k:'wheat',name:'Wheat'},{k:'ore',name:'Ore'},{k:'none',name:'Sea / desert'}
+  ];
+  const NUMS=[2,3,4,5,6,8,9,10,11,12];
+  const pips=n=>n?6-Math.abs(7-n):0;
+  const resName=k=>(RES.find(r=>r.k===k)||{}).name||'';
+  const KEY='catan-pip-calc-v1';
+
+  let state={
+    active:0,
+    slots:[{r:'ore',n:8},{r:'wheat',n:6},{r:'sheep',n:9}],
+    saved:[
+      {id:1,name:'Example A',ex:true,slots:[{r:'ore',n:8},{r:'wheat',n:6},{r:'sheep',n:9}]},
+      {id:2,name:'Example B',ex:true,slots:[{r:'lumber',n:5},{r:'brick',n:10},{r:'lumber',n:11}]}
+    ],
+    pair:[1,2], nextId:3
+  };
+  try{const s=JSON.parse(localStorage.getItem(KEY)||'null'); if(s&&Array.isArray(s.saved)) state=Object.assign(state,s);}catch(e){}
+  const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}};
+
+  const $=id=>document.getElementById(id);
+  const tok=(n,size)=>{
+    if(!n) return '<span class="tok empty">'+(size||'—')+'</span>';
+    const d=pips(n); let dots=''; for(let i=0;i<d;i++) dots+='<i></i>';
+    return '<span class="tok'+(n===6||n===8?' hot':'')+'"><span class="n">'+n+'</span><span class="dots">'+dots+'</span></span>';
+  };
+  const sw=k=>'<span class="sw" style="background:var(--'+k+')"></span>';
+
+  function analyse(slots){
+    const total=slots.reduce((a,s)=>a+(s.r==='none'?0:pips(s.n)),0);
+    const distinct=[...new Set(slots.filter(s=>s.n&&s.r!=='none').map(s=>s.n))];
+    const rolls=distinct.reduce((a,n)=>a+pips(n),0);
+    const byRes={};
+    slots.forEach(s=>{if(s.n&&s.r&&s.r!=='none'){byRes[s.r]=(byRes[s.r]||0)+pips(s.n)}});
+    return {total,rolls,byRes};
+  }
+  function verdict(t){
+    if(t>=13) return ['Excellent','v-great'];
+    if(t>=10) return ['Strong','v-good'];
+    if(t>=7) return ['Okay','v-ok'];
+    return ['Weak','v-weak'];
+  }
+
+  function renderSlots(){
+    $('slots').innerHTML=state.slots.map((s,i)=>{
+      const label=s.r==='none'?'Sea / desert':(s.r?resName(s.r):'Pick resource');
+      return '<button class="slot" type="button" id="slot'+i+'" aria-pressed="'+(state.active===i)+'" data-i="'+i+'">'+
+        (s.r==='none'?tok(null,'—'):tok(s.n,'?'))+
+        '<span class="res">'+(s.r?sw(s.r):'')+label+'</span></button>';
+    }).join('');
+    $('active-name').textContent='hex '+(state.active+1);
+  }
+  function renderResult(){
+    const a=analyse(state.slots), [v,cls]=verdict(a.total);
+    const pct=Math.round(a.rolls/36*100);
+    const order=['lumber','brick','sheep','wheat','ore'];
+    const bar=order.filter(k=>a.byRes[k]).map(k=>'<span style="width:'+(a.byRes[k]/15*100)+'%;background:var(--'+k+')"></span>').join('');
+    const leg=order.filter(k=>a.byRes[k]).map(k=>'<span class="mini">'+sw(k)+resName(k)+' <b>'+a.byRes[k]+'</b></span>').join('')||'<span class="facts">No resources picked yet</span>';
+    $('result').innerHTML='<div class="big">'+a.total+'</div>'+
+      '<div style="display:grid;gap:4px"><span class="verdict '+cls+'">'+v+'</span>'+
+      '<span class="facts">Pays out on '+a.rolls+' of 36 rolls (about '+pct+'%)</span></div>'+
+      '<div class="bar" aria-hidden="true">'+bar+'</div><div class="legend">'+leg+'</div>';
+  }
+  function renderPickers(){
+    const s=state.slots[state.active];
+    $('resChips').innerHTML=RES.map(r=>'<button class="chip" type="button" id="res-'+r.k+'" data-r="'+r.k+'" aria-pressed="'+(s.r===r.k)+'">'+sw(r.k)+r.name+'</button>').join('');
+    $('keys').innerHTML=NUMS.map(n=>'<button class="key" type="button" id="num-'+n+'" data-n="'+n+'" aria-label="'+n+', '+pips(n)+' pips" aria-pressed="'+(s.n===n&&s.r!=='none')+'">'+tok(n)+'</button>').join('');
+  }
+  function cardHTML(c){
+    const a=analyse(c.slots);
+    const minis=c.slots.map(s=>s.r==='none'||!s.n?'<span class="mini">'+sw('none')+'—</span>':
+      '<span class="mini">'+sw(s.r)+resName(s.r)+' <b class="'+(s.n===6||s.n===8?'hot':'')+'">'+s.n+'</b></span>').join('');
+    return '<div class="cardrow"><button class="card" type="button" id="card'+c.id+'" data-id="'+c.id+'" aria-pressed="'+state.pair.includes(c.id)+'">'+
+      '<span class="sc">'+a.total+'</span><span class="meta"><span class="name">'+c.name+(c.ex?'<span class="tag">Example</span>':'')+'</span><span class="minis">'+minis+'</span></span></button>'+
+      '<button class="x" type="button" aria-label="Delete '+c.name+'" data-del="'+c.id+'">×</button></div>';
+  }
+  function renderSaved(){
+    $('saved').innerHTML=state.saved.length?state.saved.map(cardHTML).join(''):
+      '<p class="empty-note">No saved corners yet. Build a corner and tap Save corner to compare options here.</p>';
+    renderPair();
+  }
+  function renderPair(){
+    const picks=state.saved.filter(c=>state.pair.includes(c.id));
+    if(picks.length<2){$('pair').innerHTML=picks.length?'<p class="warn">Pick one more saved corner to see the pair.</p>':'';return;}
+    const all=picks.flatMap(c=>c.slots);
+    const total=picks.reduce((t,c)=>t+analyse(c.slots).total,0);
+    const byRes={}; all.forEach(s=>{if(s.n&&s.r&&s.r!=='none') byRes[s.r]=(byRes[s.r]||0)+pips(s.n)});
+    const five=['lumber','brick','sheep','wheat','ore'];
+    const have=five.filter(k=>byRes[k]);
+    const counts={}; all.forEach(s=>{if(s.n&&s.r!=='none') counts[s.n]=(counts[s.n]||0)+1});
+    const dup=Object.keys(counts).filter(n=>counts[n]>1).map(Number);
+    const missing=five.filter(k=>!byRes[k]).map(resName);
+    let notes=[];
+    if(missing.length) notes.push('Missing <b>'+missing.join(', ')+'</b>. Plan to trade for '+(missing.length>1?'these':'it')+'.');
+    if(dup.length) notes.push('Leaning on <b>'+dup.join(', ')+'</b> more than once, so a cold number or the robber hurts more.');
+    if(!notes.length) notes.push('All five resources and no repeated numbers.');
+    $('pair').innerHTML='<div class="label">Your pair</div>'+
+      '<div class="pairnums"><div><strong>'+total+'</strong><span class="facts">total pips</span></div>'+
+      '<div><strong>'+have.length+' / 5</strong><span class="facts">resources</span></div></div>'+
+      '<div class="cover">'+five.map(k=>'<span class="cov'+(byRes[k]?'':' off')+'">'+sw(k)+resName(k)+(byRes[k]?' '+byRes[k]:'')+'</span>').join('')+'</div>'+
+      notes.map(n=>'<p class="warn" style="margin:0">'+n+'</p>').join('');
+  }
+  function renderRef(){
+    $('ref').innerHTML=[[6,8],[5,9],[4,10],[3,11],[2,12]].map(p=>{const d=pips(p[0]);
+      return '<tr><td class="'+(d===5?'hot':'')+'">'+p[0]+' or '+p[1]+'</td><td>'+d+'</td><td>'+d+'</td><td>~'+Math.round(d/36*100)+'%</td></tr>'}).join('');
+  }
+  function render(){renderSlots();renderResult();renderPickers();persist();}
+
+  $('slots').addEventListener('click',e=>{const b=e.target.closest('.slot');if(!b)return;state.active=+b.dataset.i;render();});
+  $('resChips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;
+    const s=state.slots[state.active]; s.r=b.dataset.r;
+    if(s.r==='none'){s.n=null; if(state.active<2) state.active++;}
+    render();});
+  $('keys').addEventListener('click',e=>{const b=e.target.closest('.key');if(!b)return;
+    const s=state.slots[state.active]; s.n=+b.dataset.n; if(!s.r||s.r==='none') s.r=s.r==='none'?null:s.r;
+    if(state.active<2) state.active++;
+    render();});
+  $('clearBtn').addEventListener('click',()=>{state.slots=[{r:null,n:null},{r:null,n:null},{r:null,n:null}];state.active=0;render();});
+  $('saveBtn').addEventListener('click',()=>{
+    const id=state.nextId++; const letter=String.fromCharCode(64+((state.saved.filter(c=>!c.ex).length)%26)+1);
+    state.saved=state.saved.filter(c=>!c.ex); state.pair=state.pair.filter(p=>state.saved.some(c=>c.id===p));
+    state.saved.unshift({id,name:'Corner '+letter,slots:JSON.parse(JSON.stringify(state.slots))});
+    state.pair=[id,...state.pair].slice(0,2);
+    renderSaved();persist();
+    const b=$('saveBtn'); b.textContent='Saved'; setTimeout(()=>b.textContent='Save corner',1200);
+  });
+  function del(id){state.saved=state.saved.filter(c=>c.id!==id);state.pair=state.pair.filter(p=>p!==id);renderSaved();persist();}
+  $('saved').addEventListener('click',e=>{
+    const d=e.target.closest('[data-del]'); if(d){e.stopPropagation();del(+d.dataset.del);return;}
+    const c=e.target.closest('.card'); if(!c) return; const id=+c.dataset.id;
+    state.pair=state.pair.includes(id)?state.pair.filter(p=>p!==id):[...state.pair,id].slice(-2);
+    renderSaved();persist();});
+
+  renderRef();render();renderSaved();
+})();
+
+/* Quick pips */
+(function(){
+  const NUMS=[2,3,4,5,6,8,9,10,11,12];
+  const pips=n=>6-Math.abs(7-n);
+  // Token supply: normal board has one 2 and 12, two of the rest; the 5-6 player extension has two 2s/12s and three of the rest
+  const MAX={normal:n=>(n===2||n===12)?1:2, extended:n=>(n===2||n===12)?2:3};
+  const MKEY='catan-pip-mode';
+  let mode='normal'; try{mode=localStorage.getItem(MKEY)==='extended'?'extended':'normal'}catch(e){}
+  let picked=[6,9,4]; // example corner on load
+  const $=id=>document.getElementById(id);
+  const tok=n=>{
+    if(!n) return '<span class="tok empty"></span>';
+    let d='';for(let i=0;i<pips(n);i++) d+='<i></i>';
+    return '<span class="tok'+(n===6||n===8?' hot':'')+'"><span class="n">'+n+'</span><span class="dots">'+d+'</span></span>';
+  };
+  const count=n=>picked.filter(x=>x===n).length;
+  function render(){
+    document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));
+    const total=picked.reduce((a,n)=>a+pips(n),0);
+    $('qtotal').textContent=total;
+    const v=$('qverdict');
+    if(!picked.length){v.textContent='Pick numbers';v.className='verdict';v.style.background='var(--muted)';$('qfacts').textContent='Tap up to three numbers below';}
+    else{
+      const [t,c]=total>=13?['Excellent','v-great']:total>=10?['Strong','v-good']:total>=7?['Okay','v-ok']:['Weak','v-weak'];
+      v.textContent=t;v.className='verdict '+c;v.style.background='';
+      const distinct=[...new Set(picked)].reduce((a,n)=>a+pips(n),0);
+      $('qfacts').textContent=distinct===total
+        ? 'Pays on '+total+' of 36 rolls (about '+Math.round(total/36*100)+'%)'
+        : 'Pays on '+distinct+' of 36 rolls, double on a repeated number';
+    }
+    const s=[0,1,2].map(i=>picked[i]
+      ? '<button class="qslot" type="button" id="qs'+i+'" data-i="'+i+'" aria-label="Remove '+picked[i]+'">'+tok(picked[i])+'<span class="rm" aria-hidden="true">×</span></button>'
+      : '<span class="qslot">'+tok(null)+'</span>');
+    $('qslots').innerHTML=s[0]+'<span class="plus">+</span>'+s[1]+'<span class="plus">+</span>'+s[2];
+    const full=picked.length>=3;
+    $('qkeys').innerHTML=NUMS.map(n=>{const c=count(n), max=MAX[mode](n), out=c>=max;
+      return '<button class="qkey" type="button" id="qk'+n+'" data-n="'+n+'" aria-pressed="'+(c>0)+'" aria-label="'+n+', '+pips(n)+' pips, '+(max-c)+' left"'+((full||out)?' disabled':'')+'>'+tok(n)+
+        (c?'<span class="cnt">×'+c+'</span>':'')+'<span class="left">'+(max-c)+' left</span></button>';}).join('');
+    $('qhint').textContent=full?'Corner full. Tap a number up top to remove it.':'Tap a number to add it. Tap the same one again to add another.';
+  }
+  $('qkeys').addEventListener('click',e=>{
+    const b=e.target.closest('.qkey'); if(!b||b.disabled) return;
+    picked=[...picked,+b.dataset.n]; render();
+  });
+  $('qslots').addEventListener('click',e=>{
+    const b=e.target.closest('button.qslot'); if(!b) return;
+    picked.splice(+b.dataset.i,1); render();
+  });
+  document.querySelector('.seg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+    mode=b.dataset.mode; try{localStorage.setItem(MKEY,mode)}catch(err){}
+    // drop extras that exceed the new board's token supply
+    const seen={}; picked=picked.filter(n=>(seen[n]=(seen[n]||0)+1)<=MAX[mode](n));
+    render();});
+  $('qclear').addEventListener('click',()=>{picked=[];render();});
+  render();
+})();
+
+/* Tabs */
+(function(){
+  const KEY='catan-pip-tab';
+  function show(v){
+    if(v!=='quick'&&v!=='corners') v='quick';
+    document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',String(t.dataset.view===v)));
+    document.getElementById('view-quick').hidden=v!=='quick';
+    document.getElementById('view-corners').hidden=v!=='corners';
+    try{localStorage.setItem(KEY,v)}catch(e){}
+  }
+  document.querySelector('.tabs').addEventListener('click',e=>{const t=e.target.closest('.tab');if(!t)return;
+    show(t.dataset.view); if(location.hash!=='#'+t.dataset.view) location.hash=t.dataset.view;});
+  window.addEventListener('hashchange',()=>show(location.hash.slice(1)));
+  let start=location.hash.slice(1);
+  if(!start){try{start=localStorage.getItem(KEY)||''}catch(e){}}
+  show(start);
+})();
+</script>
+
+<script>
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}
+</script>
+<script data-goatcounter="https://dalle.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+</body>
+</html>
